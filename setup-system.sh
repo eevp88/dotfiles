@@ -6,6 +6,17 @@ set -euo pipefail
 
 LOCALE="es_CL.UTF-8"
 
+# Tools this script relies on (Arch package name : binary).
+declare -A DEPS=([ripgrep]=rg [sd]=sd)
+missing=()
+for pkg in "${!DEPS[@]}"; do
+  command -v "${DEPS[$pkg]}" >/dev/null 2>&1 || missing+=("$pkg")
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "Installing: ${missing[*]}"
+  sudo pacman -S --needed --noconfirm "${missing[@]}"
+fi
+
 if ! locale -a | rg -qi "^${LOCALE/UTF-8/utf8}$"; then
   echo "Generating locale $LOCALE"
   sudo sd "^#\s*(${LOCALE} UTF-8)" '$1' /etc/locale.gen
