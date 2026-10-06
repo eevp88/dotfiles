@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Open the "core" tmux session: claude, workspace (lazydocker + shell) and Tokens.
+# Usage: tmux-core [project-dir]   (defaults to ~/Work/core)
+
+set -uo pipefail
+
+ROOT="$(cd -- "${1:-$HOME/Work/core}" && pwd)"
+SESSION="core"
+
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  tmux new-session -d -s "$SESSION" -n claude -c "$ROOT" "bash -lc 'claude; exec bash'"
+  tmux new-window -t "$SESSION" -n workspace -c "$ROOT" "lazydocker"
+  tmux split-window -h -t "$SESSION:workspace" -c "$ROOT"
+  tmux new-window -t "$SESSION" -n Tokens -c "$ROOT" "bash -lc 'npx codeburn; exec bash'"
+  tmux select-window -t "$SESSION:claude"
+fi
+
+if [ -n "${TMUX:-}" ]; then
+  tmux switch-client -t "$SESSION"
+else
+  exec tmux attach -t "$SESSION"
+fi
