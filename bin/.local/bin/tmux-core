@@ -20,13 +20,30 @@ ROOT="$(cd -- "$DIR" 2>/dev/null && pwd)" || {
 }
 SESSION="core"
 
+has_window() {
+  tmux list-windows -t "$SESSION" -F '#W' | grep -qx -- "$1"
+}
+
+# Create the session if missing, then create any window that is missing,
+# so a partially closed session is repaired instead of reused as-is.
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux new-session -d -s "$SESSION" -n claude -c "$ROOT" "bash -lc 'claude; exec bash'"
-  tmux new-window -t "$SESSION" -n workspace -c "$ROOT" "lazydocker"
-  tmux split-window -h -t "$SESSION:workspace" -c "$ROOT"
-  tmux new-window -t "$SESSION" -n Tokens -c "$ROOT" "bash -lc 'npx codeburn; exec bash'"
-  tmux select-window -t "$SESSION:claude"
 fi
+
+if ! has_window claude; then
+  tmux new-window -b -t "$SESSION:{start}" -n claude -c "$ROOT" "bash -lc 'claude; exec bash'"
+fi
+
+if ! has_window workspace; then
+  tmux new-window -d -t "$SESSION" -n workspace -c "$ROOT" "lazydocker"
+  tmux split-window -h -t "$SESSION:workspace" -c "$ROOT"
+fi
+
+if ! has_window Tokens; then
+  tmux new-window -d -t "$SESSION" -n Tokens -c "$ROOT" "bash -lc 'npx codeburn; exec bash'"
+fi
+
+tmux select-window -t "$SESSION:claude"
 
 if [ -n "${TMUX:-}" ]; then
   tmux switch-client -t "$SESSION"
